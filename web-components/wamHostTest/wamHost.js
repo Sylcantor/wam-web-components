@@ -1,11 +1,8 @@
 class WamHost extends HTMLElement {
     constructor() {
         super();
-
         this.root = this.attachShadow({ mode: 'open' });
         this.src = this.getAttribute('src');
-  
-
     }
   
     connectedCallback() {
@@ -20,7 +17,6 @@ class WamHost extends HTMLElement {
             <div id='mount'></div>
         `;
         this.root.innerHTML = `<style>${this.css}</style>${this.html}`;
-  
         this.mount = this.root.querySelector('#mount');
 
         // Safari...
@@ -29,19 +25,13 @@ class WamHost extends HTMLElement {
         || false;
     
         this.audioContext = new AudioContext();
-        
-
         this.loadPlugin;
-
-
     }
 
 
 
     // Very simple function to connect the plugin audionode to the host
     connectPlugin = (audioNode,dest,keyboardAudioNode) => {
-        console.log(audioNode,dest,keyboardAudioNode);
-        
         //this.mediaElementSource.connect(audioNode); this.mediaElementSource is src
 
         //keyboard is optional
@@ -60,8 +50,6 @@ class WamHost extends HTMLElement {
     };
 
     loadAssests = async (descriptor) => {
-        console.log(descriptor);
-
         if(!descriptor.isInstrument) {
             this.loadAudio();
         }
@@ -72,7 +60,6 @@ class WamHost extends HTMLElement {
 
 
     loadAudio = () => {
-        console.log('load audio');
         const audio = document.createElement('audio');
         audio.id = 'player';
         audio.src = "https://mainline.i3s.unice.fr/PedalEditor/Back-End/functional-pedals/published/StonePhaserSib/CleanGuitarRiff.mp3";
@@ -88,7 +75,7 @@ class WamHost extends HTMLElement {
     loadKeyboard = () => {
         let keyboard = this.getAttribute('keyboard');
         if(keyboard === null || !keyboard.endsWith('.js')) {
-            keyboard = "./assets/instruments/simpleMidiKeyboard/index.js"
+            keyboard = "./assets/midiKeyboard/simpleMidiKeyboard/index.js";
         }
         return keyboard;
     };
@@ -106,8 +93,6 @@ class WamHost extends HTMLElement {
     };
 
     loadEffect = async (instance) => {
-        console.log('load effect');
-        
         this.loadAudio();
         this.connectPlugin(this.mediaElementSource,instance.audioNode);
         this.connectPlugin(instance.audioNode,this.audioContext.destination);
@@ -121,7 +106,6 @@ class WamHost extends HTMLElement {
         
         // Import WAM
         const { default: WAM } = await import(this.src);
-        console.log(this.src);
         
         // Create a new instance of the plugin
         // You can can optionnally give more options such as the initial state of the plugin
@@ -142,11 +126,9 @@ class WamHost extends HTMLElement {
 
         this.mountPlugin(pluginDomNode);
 
-
-
-
-
+        this.plugin = instance;
+        this.dispatchEvent(new CustomEvent('pluginLoaded', { detail: this.plugin }));
     })(); 
 }
-  
+export { WamHost }
 customElements.define("wam-host", WamHost);
