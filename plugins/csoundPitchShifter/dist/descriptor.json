@@ -1,0 +1,16 @@
+{
+    "identifier": "com.wimmics.csoundpitchshifter",
+    "name": "Csound Pitch Shifter",
+    "vendor": "Wimmics",
+    "description": "A pitch shifter written by Steven Yi, csound code compiled to wasm.",
+    "version": "1.0.0",
+    "apiVersion": "1.0.0",
+    "thumbnail": "",
+    "keywords": ["PitchShifter"],
+    "isInstrument": false,
+    "website": "",
+    "hasAudioInput": true,
+    "hasAudioOutput": true,
+    "hasMidiInput": false,
+    "hasMidiOutput": false
+}

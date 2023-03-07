@@ -1,0 +1,7 @@
+/*
+Do a style for div that display one element per line
+*/
+div {
+    display: block;
+}
+
