@@ -1,0 +1,24 @@
+<html lang="en">
+<head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="stylesheet" href="./styles.css">
+        <title>Simple host that loads a non bundled plugin</title>
+        <script type="module" src="./wamHost.js"></script>
+</head>
+
+<body>
+        <main>               
+                <!-- Instrument
+                     you can add a new keyboard in assets/midiKeyboard directory
+                     and add keyboard ="keyboardName" to the wam-host tag
+                 -->
+                <wam-host src="../../plugins/synth101/dist/index.js">
+                </wam-host>
+
+                <!-- Effect 
+                <wam-host src="/plugins/BigMuff/index.js"></wam-host>
+                 -->
+        </main>
+        
+</body>
