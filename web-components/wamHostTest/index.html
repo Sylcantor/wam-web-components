@@ -3,14 +3,17 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="stylesheet" href="./styles.css">
+        <link rel="stylesheet" href="https://wasabi.i3s.unice.fr/WebAudioPluginBank/bower_components/mocha/mocha.css">
         <title>Simple host that loads a non bundled plugin</title>
-        <script type="module" src="./wamHost.js"></script>
+        <script type="module" src="./wamHostTest.js"></script>
 </head>
 
 <body>
         <main>                 
-                <wam-host src="../../plugins/BigMuff/index.js">
-                </wam-host>
+                <wam-host-test src="../../plugins/BigMuff/index.js"></wam-host-test>
+                <div id="mocha"></div> 
         </main>
-        
+        <script src="https://wasabi.i3s.unice.fr/WebAudioPluginBank/bower_components/mocha/mocha.js"></script>
+        <script src="https://wasabi.i3s.unice.fr/WebAudioPluginBank/node_modules/chai/chai.js"></script>
+        <script>mocha.setup('bdd')</script>
 </body>
