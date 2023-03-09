@@ -66,6 +66,11 @@ class WamHost extends HTMLElement {
         audio.controls = true;
         audio.loop = true;
         audio.crossOrigin = 'anonymous';
+        // Il faut une interaction pour que l'audioContext soit activé
+        audio.onplay =  () => {
+            this.audioContext.resume();
+        };
+
         this.mount.appendChild(audio);
         this.player = audio;
         this.mediaElementSource = this.audioContext.createMediaElementSource(this.player);
@@ -89,6 +94,10 @@ class WamHost extends HTMLElement {
         this.connectPlugin(instance.audioNode,this.audioContext.destination,instanceKeyboard.audioNode);
 
         const keyboardUi = await instanceKeyboard.createGui();
+        keyboardUi.onclick = () => {
+            this.audioContext.resume();
+            console.log("click");
+        }
         this.mountPlugin(keyboardUi);
     };
 
