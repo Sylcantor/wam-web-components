@@ -113,7 +113,8 @@ class WamHost extends HTMLElement {
             audio.onplay =  () => {
                 this.audioContext.resume();
             };
-            this.mount.appendChild(audio);
+
+            this.mount.prepend(audio);
             this.mediaElementSource = this.audioContext.createMediaElementSource(audio);
             this.connectPlugin(this.mediaElementSource,firstInstance.audioNode);
         }
