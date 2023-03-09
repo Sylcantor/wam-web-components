@@ -1,23 +1,25 @@
+//do a template and all children that are in the slot will be show in line
+const template = document.createElement('template');
+template.innerHTML = `
+    <div class="wam-host">
+        <slot></slot>
+    </div>
+    <style>
+        .wam-host {
+            display: block;
+        }
+    </style>
+`;
+
+
 class WamHost extends HTMLElement {
     constructor() {
         super();
-        this.root = this.attachShadow({ mode: 'open' });
-        this.src = this.getAttribute('src');
-    }
-  
-    connectedCallback() {
-        // Do something
-        this.css = document.createElement('style');
-        this.css = `
-            div {
-                display: block;
-            }
-        `;
-        this.html = `
-            <div id='mount'></div>
-        `;
-        this.root.innerHTML = `<style>${this.css}</style>${this.html}`;
-        this.mount = this.root.querySelector('#mount');
+        const root = this.attachShadow({ mode: 'open' });
+
+        root.appendChild(template.content.cloneNode(true));
+
+        this.mount = root.querySelector('.wam-host');
 
         // Safari...
         this.AudioContext = window.AudioContext // Default
@@ -25,15 +27,36 @@ class WamHost extends HTMLElement {
         || false;
     
         this.audioContext = new AudioContext();
-        this.loadPlugin;
+    }
+  
+    async connectedCallback() {
+        this.instances = [];
+        const childElements = Array.from(this.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
+
+        const hostGroupId = await this.loadPlugins(childElements);
+        this.loadInterface(hostGroupId);
+        this.connectPlugins();
     }
 
+    connectPlugins = async () => {
 
+        for(let i = 0; i < this.instances.length; i++) {
+            const instance = await this.instances[i];
+            console.log(instance);
+            //check if the instance is the last one
+            if(i === this.instances.length - 1) {
+                this.connectPlugin(instance.audioNode,this.audioContext.destination);
+            }
+            else {
+                const nextInstance = await this.instances[i+1];
+                this.connectPlugin(instance.audioNode,nextInstance.audioNode);
+            }
+        }
+    };
 
-    // Very simple function to connect the plugin audionode to the host
     connectPlugin = (audioNode,dest,keyboardAudioNode) => {
         //this.mediaElementSource.connect(audioNode); this.mediaElementSource is src
-
+    
         //keyboard is optional
         if(keyboardAudioNode) {
             keyboardAudioNode.connect(audioNode);
@@ -43,101 +66,78 @@ class WamHost extends HTMLElement {
         audioNode.connect(dest);
     };
 
-    // Very simple function to append the plugin root dom node to the host
+    connectKeyboard = (audioNode,keyboardAudioNode) => {
+        keyboardAudioNode.connect(audioNode);
+        keyboardAudioNode.connectEvents(audioNode.instanceId);
+    };
+
     mountPlugin = (domNode) => {
         this.mount.innerHtml = '';
         this.mount.appendChild(domNode);
     };
 
-    loadAssests = async (descriptor) => {
-        if(!descriptor.isInstrument) {
-            this.loadAudio();
+    loadInterface = async (hostGroupId) => {
+
+        const loadInstrumentInterface =  async (firstInstance) => {
+
+            const loadKeyboard = () => {
+                let keyboard = this.getAttribute('keyboard');
+                if(keyboard === null || !keyboard.endsWith('.js')) {
+                    keyboard = "./assets/midiKeyboard/simpleMidiKeyboard/index.js";
+                }
+                return keyboard;
+            };
+
+            const keyboard = loadKeyboard();
+            const { default : keyboardWAM } = await import(keyboard);
+            const instanceKeyboard = await keyboardWAM.createInstance(hostGroupId, this.audioContext);
+    
+            this.connectKeyboard(firstInstance.audioNode,instanceKeyboard.audioNode);
+    
+            const keyboardUi = await instanceKeyboard.createGui();
+            keyboardUi.onclick = () => {
+                this.audioContext.resume();
+                console.log("click");
+            }
+            this.mountPlugin(keyboardUi);
         }
-        else if(descriptor.isInstrument) {
-            await this.loadInstrument;
+
+        const loadEffectInterface =  (firstInstance) => {
+            const audio = document.createElement('audio');
+            audio.id = 'player';
+            audio.src = "https://mainline.i3s.unice.fr/PedalEditor/Back-End/functional-pedals/published/StonePhaserSib/CleanGuitarRiff.mp3";
+            audio.controls = true;
+            audio.loop = true;
+            audio.crossOrigin = 'anonymous';
+            // Il faut une interaction pour que l'audioContext soit activé
+            audio.onplay =  () => {
+                this.audioContext.resume();
+            };
+            this.mount.appendChild(audio);
+            this.mediaElementSource = this.audioContext.createMediaElementSource(audio);
+            this.connectPlugin(this.mediaElementSource,firstInstance.audioNode);
         }
-    };
 
-
-    loadAudio = () => {
-        const audio = document.createElement('audio');
-        audio.id = 'player';
-        audio.src = "https://mainline.i3s.unice.fr/PedalEditor/Back-End/functional-pedals/published/StonePhaserSib/CleanGuitarRiff.mp3";
-        audio.controls = true;
-        audio.loop = true;
-        audio.crossOrigin = 'anonymous';
-        // Il faut une interaction pour que l'audioContext soit activé
-        audio.onplay =  () => {
-            this.audioContext.resume();
-        };
-
-        this.mount.appendChild(audio);
-        this.player = audio;
-        this.mediaElementSource = this.audioContext.createMediaElementSource(this.player);
-
-    };
-
-    loadKeyboard = () => {
-        let keyboard = this.getAttribute('keyboard');
-        if(keyboard === null || !keyboard.endsWith('.js')) {
-            keyboard = "./assets/midiKeyboard/simpleMidiKeyboard/index.js";
+        const firstInstance = await this.instances[0];
+        if(firstInstance.descriptor.isInstrument) {
+            loadInstrumentInterface(firstInstance);
         }
-        return keyboard;
-    };
-
-    loadInstrument = async (instance,hostGroupId) => {
-
-        const keyboard = this.loadKeyboard();
-        const { default : keyboardWAM } = await import(keyboard);
-        const instanceKeyboard = await keyboardWAM.createInstance(hostGroupId, this.audioContext);
-
-        this.connectPlugin(instance.audioNode,this.audioContext.destination,instanceKeyboard.audioNode);
-
-        const keyboardUi = await instanceKeyboard.createGui();
-        keyboardUi.onclick = () => {
-            this.audioContext.resume();
-            console.log("click");
+        else {
+            loadEffectInterface(firstInstance);
         }
-        this.mountPlugin(keyboardUi);
-    };
-
-    loadEffect = async (instance) => {
-        this.loadAudio();
-        this.connectPlugin(this.mediaElementSource,instance.audioNode);
-        this.connectPlugin(instance.audioNode,this.audioContext.destination);
-    };
+    }
 
 
-    loadPlugin = (async () => {
-        // Init WamEnv
+    loadPlugins =  async (plugins) => {
         const { default: initializeWamHost } = await import("./lib/sdk/src/initializeWamHost.js");
         const [hostGroupId] = await initializeWamHost(this.audioContext);
-        
-        // Import WAM
-        const { default: WAM } = await import(this.src);
-        
-        // Create a new instance of the plugin
-        // You can can optionnally give more options such as the initial state of the plugin
-        const instance = await WAM.createInstance(hostGroupId, this.audioContext);
+        plugins.forEach(plugin => {
+            this.instances.push(plugin.loadPlugin(this.audioContext,hostGroupId));
+        });
 
-        window.instance = instance;
-
-        if(instance.descriptor.isInstrument) {
-            this.loadInstrument(instance,hostGroupId);
-        }
-        else if(!instance.descriptor.isInstrument) {
-            this.loadEffect(instance);
-        }
-        
-        // Load the GUI if need (ie. if the option noGui was set to true)
-        // And calls the method createElement of the Gui module
-        const pluginDomNode = await instance.createGui();
-
-        this.mountPlugin(pluginDomNode);
-
-        this.plugin = instance;
-        this.dispatchEvent(new CustomEvent('pluginLoaded', { detail: this.plugin }));
-    })(); 
+        return hostGroupId;
+    }
 }
-export { WamHost }
-customElements.define("wam-host", WamHost);
+
+export { WamHost };
+customElements.define('wam-host', WamHost);
