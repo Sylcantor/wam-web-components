@@ -2,21 +2,31 @@
 const template = document.createElement('template');
 template.innerHTML = `
     <div class="wam-host">
-        <slot></slot>
+        <form id="form">
+            <div id="select">
+            </div>
+        </form>
+        <div>
+            <slot class"plugins"></slot>
+        </div>
     </div>
     <style>
-        .wam-host {
-            display: block;
+        .wam-host > * {
+            display: flex;
+            flex-wrap: wrap;
+        }
+        .plugins{
+            display : flex;
         }
     </style>
 `;
+
 
 
 class WamHost extends HTMLElement {
     constructor() {
         super();
         const root = this.attachShadow({ mode: 'open' });
-
         root.appendChild(template.content.cloneNode(true));
 
         this.mount = root.querySelector('.wam-host');
@@ -27,8 +37,36 @@ class WamHost extends HTMLElement {
         || false;
     
         this.audioContext = new AudioContext();
+
+        //this.loadPluginList(root);
     }
-  
+
+    /*
+    loadPluginList = (root) => {
+        const strings = ["Premier élément", "Deuxième élément", "Troisième élément"];
+        
+
+        // Récupération de l'élément HTML où la liste déroulante sera insérée
+        const selectElement = root.querySelector("#select");
+
+
+        // Création de la liste déroulante
+        let selectList = document.createElement("select");
+
+        // Parcours du tableau et création d'une option pour chaque élément
+        for (let i = 0; i < strings.length; i++) {
+            let option = document.createElement("option");
+            option.value = strings[i];
+            option.text = strings[i];
+            selectList.appendChild(option);
+        }
+
+        // Ajout de la liste déroulante à l'élément HTML
+        selectElement.appendChild(selectList);
+
+    }
+    */
+
     async connectedCallback() {
         this.instances = [];
         const childElements = Array.from(this.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
