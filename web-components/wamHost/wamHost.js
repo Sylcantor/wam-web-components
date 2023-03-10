@@ -4,6 +4,9 @@ import { WamPlugin } from '../wamPlugin/wamPlugin.js';
 const template = document.createElement('template');
 template.innerHTML = `
     <div class="wam-host">
+        <p class="p">Select MIDI input device
+            <select id="selectMidiInput" class="widget"></select>
+        </p>
         <p class="p">Select live input device
             <select id="selectAudioInput" class="widget"></select>
         </p>
@@ -62,6 +65,9 @@ class WamHost extends HTMLElement {
         };
         this.liveInputActivated = false;
 
+        this.setupMidiInput(root);
+
+
 
         //this.loadPluginList(root);
     }
@@ -106,8 +112,38 @@ class WamHost extends HTMLElement {
             this.setLiveInputToNewStream(stream);
             this.connectLiveInput();
         });
+    }
 
-        
+    setupMidiInput = (root) => {
+        const midiInputSelector = root.querySelector('#selectMidiInput');
+        if (navigator.requestMIDIAccess) {
+            navigator.requestMIDIAccess().then((midiAccess) => {
+                let currentInput;
+                const handleMidiMessage = (e) => {
+                    if (!currentPluginAudioNode) return;
+                    currentPluginAudioNode.scheduleEvents({ type: 'wam-midi', time: currentPluginAudioNode.context.currentTime, data: { bytes: e.data } });
+                };
+                const handleStateChange = () => {
+                    const { inputs } = midiAccess;
+                    if (midiInputSelector.options.length === inputs.size + 1) return;
+                    if (currentInput) currentInput.removeEventListener('midimessage', handleMidiMessage);
+                    midiInputSelector.innerHTML = '<option value="-1" disabled selected>Select...</option>';
+                    inputs.forEach((midiInput) => {
+                        const { name, id } = midiInput;
+                        const option = new Option(name, id);
+                        midiInputSelector.add(option);
+                    });
+                };
+                handleStateChange();
+                midiAccess.addEventListener('statechange', handleStateChange);
+                midiInputSelector.addEventListener('input', (e) => {
+                    if (currentInput) currentInput.removeEventListener('midimessage', handleMidiMessage);
+                    const id = e.target.value;
+                    currentInput = midiAccess.inputs.get(id);
+                    currentInput.addEventListener('midimessage', handleMidiMessage);
+                });
+            });
+        }
     }
 
     toggleLiveInput = (root) => {
