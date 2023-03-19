@@ -14,67 +14,55 @@ class WamPlugin extends HTMLElement {
     constructor() {
         super();
         const root = this.attachShadow({ mode: 'open' });
-
         root.appendChild(template.content.cloneNode(true));
-
         //get the div with class wam-plugin
         this.mount = root.querySelector('.wam-plugin');
         this.src = this.getAttribute('src');
+        this.audioContext;
+        this.instance;
+        this.domNode; // The GUI of the plugin
 
         // Safari...
         this.AudioContext = window.AudioContext // Default
         || window.webkitAudioContext // Safari and old versions of Chrome
-        || false;
-
-        this.audioContext = new AudioContext();
+        || false;      
     }
   
     connectedCallback() {
         if(this.parentNode.nodeName !== 'WAM-HOST') {
-            console.log("test")
             this.audioContext = new AudioContext();
             this.loadPluginDemo();
         }
     }
 
     loadPlugin = async (audioContext,hostGroupId) => {
-        
-
-
-        
         // Import WAM
         const { default: WAM } = await import(this.src);
         
         // Create a new instance of the plugin
         // You can can optionnally give more options such as the initial state of the plugin
-        const instance = await WAM.createInstance(hostGroupId, audioContext);
+        this.instance = await WAM.createInstance(hostGroupId, audioContext);
 
-        window.instance = instance;
-
-        console.log(instance);
+        //wait that instance is define to continue the code
+        console.log(this.instance);
 
         // Load the GUI if need (ie. if the option noGui was set to true)
         // And calls the method createElement of the Gui module
-        const pluginDomNode = await instance.createGui();
+        this.domNode = await this.instance.createGui();
+        
+        //this.mountPlugin(this.domNode);
 
-
-        this.mountPlugin(pluginDomNode);
-
-
-        return instance;
+        return this.instance;
     };
 
-
     // Very simple function to connect the plugin audionode to the host
-    connectPlugin = (audioNode,dest,keyboardAudioNode) => {
-        //this.mediaElementSource.connect(audioNode); this.mediaElementSource is src
-
+    connectPlugin = (dest,keyboardAudioNode) => {
+        const audioNode = this.instance.audioNode;
         //keyboard is optional
         if(keyboardAudioNode) {
             keyboardAudioNode.connect(audioNode);
             keyboardAudioNode.connectEvents(audioNode.instanceId);
         }
-        //audioNode.connect(this.audioContext.destination); this.audioContext.destination is dest
         audioNode.connect(dest);
     };
 
@@ -83,6 +71,10 @@ class WamPlugin extends HTMLElement {
         this.mount.innerHtml = '';
         this.mount.appendChild(domNode);
     };
+
+
+
+    //for demo
 
     loadAudio = () => {
         const audio = document.createElement('audio');
@@ -98,7 +90,6 @@ class WamPlugin extends HTMLElement {
 
         this.mount.appendChild(audio);
         this.mediaElementSource = this.audioContext.createMediaElementSource(audio);
-
     };
 
     loadKeyboard = () => {
@@ -109,13 +100,14 @@ class WamPlugin extends HTMLElement {
         return keyboard;
     };
 
-    loadInstrument = async (instance,hostGroupId) => {
+    loadInstrument = async (hostGroupId) => {
 
         const keyboard = this.loadKeyboard();
         const { default : keyboardWAM } = await import(keyboard);
         const instanceKeyboard = await keyboardWAM.createInstance(hostGroupId, this.audioContext);
 
-        this.connectPlugin(instance.audioNode,this.audioContext.destination,instanceKeyboard.audioNode);
+        instanceKeyboard.audioNode.connect(this.instance.audioNode);
+        instanceKeyboard.audioNode.connectEvents(this.instance.audioNode.instanceId);
 
         const keyboardUi = await instanceKeyboard.createGui();
         keyboardUi.onclick = () => {
@@ -125,10 +117,9 @@ class WamPlugin extends HTMLElement {
         this.mountPlugin(keyboardUi);
     };
 
-    loadEffect = async (instance) => {
+    loadEffect = async () => {
         this.loadAudio();
-        this.connectPlugin(this.mediaElementSource,instance.audioNode);
-        this.connectPlugin(instance.audioNode,this.audioContext.destination);
+        this.mediaElementSource.connect(this.instance.audioNode);
     };
 
     loadPluginDemo = async () => {
@@ -142,25 +133,22 @@ class WamPlugin extends HTMLElement {
         
         // Create a new instance of the plugin
         // You can can optionnally give more options such as the initial state of the plugin
-        const instance = await WAM.createInstance(hostGroupId, this.audioContext);
+        this.instance = await WAM.createInstance(hostGroupId, this.audioContext);
 
-        window.instance = instance;
+        if(this.instance.descriptor.isInstrument) {
+            this.loadInstrument(hostGroupId);
+        }
+        else if(!this.instance.descriptor.isInstrument) {
+            this.loadEffect();
+        }
 
-        if(instance.descriptor.isInstrument) {
-            this.loadInstrument(instance,hostGroupId);
-        }
-        else if(!instance.descriptor.isInstrument) {
-            this.loadEffect(instance);
-        }
+        this.connectPlugin(this.audioContext.destination);
         
         // Load the GUI if need (ie. if the option noGui was set to true)
         // And calls the method createElement of the Gui module
-        const pluginDomNode = await instance.createGui();
+        this.domNode = await this.instance.createGui();
 
-        this.mountPlugin(pluginDomNode);
-
-        this.plugin = instance;
-        this.dispatchEvent(new CustomEvent('pluginLoaded', { detail: this.plugin }));
+        this.mountPlugin(this.domNode);
     }; 
 }
 export { WamPlugin }

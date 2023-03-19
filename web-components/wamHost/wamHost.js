@@ -1,6 +1,3 @@
-import { WamPlugin } from '../wamPlugin/wamPlugin.js';
-
-//do a template and all children that are in the slot will be show in line
 const template = document.createElement('template');
 template.innerHTML = `
     <div class="wam-host">
@@ -15,7 +12,6 @@ template.innerHTML = `
                 <span style='color:#cc7c6e;'>NOT ACTIVATED</span>, click to toggle on/off!</button>
         </p>
         <div class=wam-plugins>
-            <slot class"plugins"></slot>
         </div>
     </div>
     <style>
@@ -44,6 +40,7 @@ class WamHost extends HTMLElement {
         root.appendChild(template.content.cloneNode(true));
 
         this.mount = root.querySelector('.wam-host');
+        this.mountPlug = root.querySelector('.wam-plugins');
         this.audioInput = root.querySelector('#selectAudioInput');
 
         const liveInputButton = root.querySelector('#toggleLiveInput');
@@ -66,44 +63,14 @@ class WamHost extends HTMLElement {
         this.liveInputActivated = false;
 
         this.setupMidiInput(root);
-
-
-
-        //this.loadPluginList(root);
     }
-
-    /*
-    loadPluginList = (root) => {
-        const strings = ["Premier élément", "Deuxième élément", "Troisième élément"];
-        
-
-        // Récupération de l'élément HTML où la liste déroulante sera insérée
-        const selectElement = root.querySelector("#select");
-
-
-        // Création de la liste déroulante
-        let selectList = document.createElement("select");
-
-        // Parcours du tableau et création d'une option pour chaque élément
-        for (let i = 0; i < strings.length; i++) {
-            let option = document.createElement("option");
-            option.value = strings[i];
-            option.text = strings[i];
-            selectList.appendChild(option);
-        }
-
-        // Ajout de la liste déroulante à l'élément HTML
-        selectElement.appendChild(selectList);
-
-    }
-    */
 
     async connectedCallback() {
-        this.instances = [];
-        const childElements = Array.from(this.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
-
-        const hostGroupId = await this.loadPlugins(childElements);
-        this.loadInterface(hostGroupId);
+        this.plugins = Array.from(this.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
+        this.hostGroupId = await this.initWamHost();
+        await this.loadPlugins();
+        this.mountPlugins();
+        this.loadInterface();
         this.connectPlugins();
         this.buildAudioDeviceMenu();
 
@@ -173,7 +140,6 @@ class WamHost extends HTMLElement {
         return merger;
     }
     
-
     setLiveInputToNewStream = (stream) => {
         window.stream = stream;
         const inputStreamNode = this.audioContext.createMediaStreamSource(stream);
@@ -204,7 +170,7 @@ class WamHost extends HTMLElement {
     };
 
     buildAudioDeviceMenu = () => {
-        console.log('BUILDING DEVICE MENU');
+        console.log('Building device menu...');
         navigator.mediaDevices
             .enumerateDevices()
             .then(this.gotDevices)
@@ -242,38 +208,22 @@ class WamHost extends HTMLElement {
     };
 
     connectLiveInput = async () => {
-        const instance = await this.instances[0];
+        const instance = await this.plugins[0].instance;
         const audioNode = instance.audioNode;
         if (audioNode.numberOfInputs) this.liveInputGainNode.connect(audioNode);
         console.log('connected live input node to plugin node');
     };
 
     connectPlugins = async () => {
-
-        for(let i = 0; i < this.instances.length; i++) {
-            const instance = await this.instances[i];
-            console.log(instance);
-            //check if the instance is the last one
-            if(i === this.instances.length - 1) {
-                this.connectPlugin(instance.audioNode,this.audioContext.destination);
-            }
-            else {
-                const nextInstance = await this.instances[i+1];
-                this.connectPlugin(instance.audioNode,nextInstance.audioNode);
-            }
+        for(let i = 0; i < this.plugins.length; i++) {
+            const plugin = this.plugins[i];
+            const instance = await plugin.instance;
+            const audioNode = instance.audioNode;
+            console.log(audioNode);
+            const dest = i === this.plugins.length - 1 ? this.audioContext.destination : this.plugins[i+1].instance.audioNode;
+            plugin.connectPlugin(dest);
+            //this.connectPlugin(audioNode,dest);
         }
-    };
-
-    connectPlugin = (audioNode,dest,keyboardAudioNode) => {
-        //this.mediaElementSource.connect(audioNode); this.mediaElementSource is src
-    
-        //keyboard is optional
-        if(keyboardAudioNode) {
-            keyboardAudioNode.connect(audioNode);
-            keyboardAudioNode.connectEvents(audioNode.instanceId);
-        }
-        //audioNode.connect(this.audioContext.destination); this.audioContext.destination is dest
-        audioNode.connect(dest);
     };
 
     connectKeyboard = (audioNode,keyboardAudioNode) => {
@@ -282,11 +232,11 @@ class WamHost extends HTMLElement {
     };
 
     mountPlugin = (domNode) => {
-        this.mount.innerHtml = '';
-        this.mount.appendChild(domNode);
+        this.mountPlug.innerHtml = '';
+        this.mountPlug.appendChild(domNode);
     };
 
-    loadInterface = async (hostGroupId) => {
+    loadInterface = async () => {
 
         const loadInstrumentInterface =  async (firstInstance) => {
 
@@ -300,7 +250,7 @@ class WamHost extends HTMLElement {
 
             const keyboard = loadKeyboard();
             const { default : keyboardWAM } = await import(keyboard);
-            const instanceKeyboard = await keyboardWAM.createInstance(hostGroupId, this.audioContext);
+            const instanceKeyboard = await keyboardWAM.createInstance(this.hostGroupId, this.audioContext);
     
             this.connectKeyboard(firstInstance.audioNode,instanceKeyboard.audioNode);
     
@@ -309,7 +259,8 @@ class WamHost extends HTMLElement {
                 this.audioContext.resume();
                 console.log("click");
             }
-            this.mountPlugin(keyboardUi);
+            this.mount.innerHtml = '';
+            this.mount.appendChild(keyboardUi);
         }
 
         const loadEffectInterface =  (firstInstance) => {
@@ -326,10 +277,10 @@ class WamHost extends HTMLElement {
 
             this.mount.prepend(audio);
             this.mediaElementSource = this.audioContext.createMediaElementSource(audio);
-            this.connectPlugin(this.mediaElementSource,firstInstance.audioNode);
+            this.mediaElementSource.connect(firstInstance.audioNode);
         }
 
-        const firstInstance = await this.instances[0];
+        const firstInstance = await this.plugins[0].instance;
         if(firstInstance.descriptor.isInstrument) {
             loadInstrumentInterface(firstInstance);
         }
@@ -338,15 +289,29 @@ class WamHost extends HTMLElement {
         }
     }
 
-
-    loadPlugins =  async (plugins) => {
+    initWamHost =  async () => {
         const { default: initializeWamHost } = await import("./lib/sdk/src/initializeWamHost.js");
         const [hostGroupId] = await initializeWamHost(this.audioContext);
-        plugins.forEach(plugin => {
-            this.instances.push(plugin.loadPlugin(this.audioContext,hostGroupId));
-        });
-
         return hostGroupId;
+    }
+
+
+    loadPlugins =  async () => {
+        //do async stuff 
+        const promises = this.plugins.map(async plugin => {
+            await plugin.loadPlugin(this.audioContext,this.hostGroupId)
+            plugin.audioContext = this.audioContext; // plugin will know the audio context of the host in case it need it
+        });
+        await Promise.all(promises);
+        console.log(this.plugins[0].instance);
+    }
+
+    mountPlugins = async () => {
+        const promises = this.plugins.map(async plugin => {
+            const domNode = await plugin.instance.createGui();
+            this.mountPlugin(domNode);
+        });
+        await Promise.all(promises);
     }
 }
 
