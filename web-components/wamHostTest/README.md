@@ -9,5 +9,5 @@ Copy the WAM Host Test Web Component files into your project, making sure to mai
 <script type="module" src="path/to/wam-host-test.js"></script>
 ```
 ## Usage
-In development - not ready for use yet
+In development - not ready for use yet  
 Make sure the JavaScript files of the plugins are accessible from the specified paths.
