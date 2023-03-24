@@ -42,7 +42,7 @@ class WamHost extends HTMLElement {
         this.mount = root.querySelector('.wam-host');
         this.mountPlug = root.querySelector('.wam-plugins');
         this.audioInput = root.querySelector('#selectAudioInput');
-
+        this.firstAudioNode;
         const liveInputButton = root.querySelector('#toggleLiveInput');
         liveInputButton.onclick = this.toggleLiveInput.bind(this, root);
 
@@ -87,8 +87,9 @@ class WamHost extends HTMLElement {
             navigator.requestMIDIAccess().then((midiAccess) => {
                 let currentInput;
                 const handleMidiMessage = (e) => {
-                    if (!currentPluginAudioNode) return;
-                    currentPluginAudioNode.scheduleEvents({ type: 'wam-midi', time: currentPluginAudioNode.context.currentTime, data: { bytes: e.data } });
+                    if (!this.firstAudioNode) return;
+                    this.audioContext.resume();
+                    this.firstAudioNode.scheduleEvents({ type: 'wam-midi', time: this.firstAudioNode.context.currentTime, data: { bytes: e.data } });
                 };
                 const handleStateChange = () => {
                     const { inputs } = midiAccess;
@@ -222,7 +223,6 @@ class WamHost extends HTMLElement {
             console.log(audioNode);
             const dest = i === this.plugins.length - 1 ? this.audioContext.destination : this.plugins[i+1].instance.audioNode;
             plugin.connectPlugin(dest);
-            //this.connectPlugin(audioNode,dest);
         }
     };
 
@@ -266,7 +266,10 @@ class WamHost extends HTMLElement {
         const loadEffectInterface =  (firstInstance) => {
             const audio = document.createElement('audio');
             audio.id = 'player';
-            audio.src = "https://mainline.i3s.unice.fr/PedalEditor/Back-End/functional-pedals/published/StonePhaserSib/CleanGuitarRiff.mp3";
+            //audio.src = "https://mainline.i3s.unice.fr/PedalEditor/Back-End/functional-pedals/published/StonePhaserSib/CleanGuitarRiff.mp3";
+            audio.src = "https://cdn.freesound.org/previews/234/234354_3908940-lq.mp3";
+
+            
             audio.controls = true;
             audio.loop = true;
             audio.crossOrigin = 'anonymous';
@@ -303,7 +306,8 @@ class WamHost extends HTMLElement {
             plugin.audioContext = this.audioContext; // plugin will know the audio context of the host in case it need it
         });
         await Promise.all(promises);
-        console.log(this.plugins[0].instance);
+        this.firstAudioNode = this.plugins[0].instance.audioNode;
+        console.log(this.plugins[0].instance.audioNode);
     }
 
     mountPlugins = async () => {
