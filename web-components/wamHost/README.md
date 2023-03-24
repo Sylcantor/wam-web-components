@@ -11,7 +11,7 @@ Copy the WAM Host Web Component files into your project, making sure to maintain
 To use the WAM Host Web Component, add a <wam-host> tag in your HTML file and add <wam-plugin> tags as children of this tag. Each <wam-plugin> tag must have a src attribute pointing to the JavaScript file of the plugin to load.
 ```html
 <wam-host>
-<wam-plugin src="path/to/plugin1.js"></wam-plugin>
-<wam-plugin src="path/to/plugin2.js"></wam-plugin>
+    <wam-plugin src="path/to/plugin1.js"></wam-plugin>
+    <wam-plugin src="path/to/plugin2.js"></wam-plugin>
 </wam-host>
 ```
