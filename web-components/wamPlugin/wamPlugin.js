@@ -10,16 +10,21 @@ template.innerHTML = `
     </style>
 `;
 
+//A web component to load a plugin
 class WamPlugin extends HTMLElement {
     constructor() {
         super();
+        // Create a shadow root
         const root = this.attachShadow({ mode: 'open' });
+        // Append the template to the shadow root
         root.appendChild(template.content.cloneNode(true));
         //get the div with class wam-plugin
         this.mount = root.querySelector('.wam-plugin');
+        //get the src attribute
         this.src = this.getAttribute('src');
+
         this.audioContext;
-        this.instance;
+        this.instance; // The instance of the plugin
         this.domNode; // The GUI of the plugin
 
         // Safari...
@@ -27,14 +32,20 @@ class WamPlugin extends HTMLElement {
         || window.webkitAudioContext // Safari and old versions of Chrome
         || false;      
     }
-  
+    
     connectedCallback() {
+
+        // If the plugin is not a child of a wam-host
+        // We load the plugin in a demo mode
+        // Else we load the plugin in a host mode (ie. the plugin is a child of a wam-host)
+        // check wam-host.js for more details
         if(this.parentNode.nodeName !== 'WAM-HOST') {
-            this.audioContext = new AudioContext();
+            this.audioContext = new AudioContext(); // Create an audio context for the demo
             this.loadPluginDemo();
         }
     }
 
+    // Load the plugin and the GUI
     loadPlugin = async (audioContext,hostGroupId) => {
         // Import WAM
         const { default: WAM } = await import(this.src);
@@ -74,24 +85,30 @@ class WamPlugin extends HTMLElement {
 
 
 
-    //for demo
+    /* --------------------- For plugin DEMO --------------------- */
 
+    // Load the audio file
     loadAudio = () => {
+        // create audio element
         const audio = document.createElement('audio');
         audio.id = 'player';
         audio.src = "https://mainline.i3s.unice.fr/PedalEditor/Back-End/functional-pedals/published/StonePhaserSib/CleanGuitarRiff.mp3";
         audio.controls = true;
         audio.loop = true;
         audio.crossOrigin = 'anonymous';
-        // Il faut une interaction pour que l'audioContext soit activé
+
+        // add interaction to unlock audiocontext
         audio.onplay =  () => {
             this.audioContext.resume();
         };
 
+        // add audio to the dom
         this.mount.appendChild(audio);
+        // setting the mediaElementSource
         this.mediaElementSource = this.audioContext.createMediaElementSource(audio);
     };
 
+    // Load the keyboard
     loadKeyboard = () => {
         let keyboard = this.getAttribute('keyboard');
         if(keyboard === null || !keyboard.endsWith('.js')) {
@@ -100,6 +117,7 @@ class WamPlugin extends HTMLElement {
         return keyboard;
     };
 
+    // Load the keyboard and the instrument
     loadInstrument = async (hostGroupId) => {
 
         const keyboard = this.loadKeyboard();
@@ -117,11 +135,13 @@ class WamPlugin extends HTMLElement {
         this.mountPlugin(keyboardUi);
     };
 
+    // Load the audio for the effect plugin and connect it to the plugin
     loadEffect = async () => {
         this.loadAudio();
         this.mediaElementSource.connect(this.instance.audioNode);
     };
 
+    // Load the demo of the plugin
     loadPluginDemo = async () => {
         console.log("loadPluginDemo");
         // Init WamEnv

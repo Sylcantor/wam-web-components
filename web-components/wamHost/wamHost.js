@@ -33,16 +33,20 @@ template.innerHTML = `
     </style>
 `;
 
+// A web component to load a host for wamPlugins web components
 class WamHost extends HTMLElement {
     constructor() {
         super();
+        // Create a shadow root
         const root = this.attachShadow({ mode: 'open' });
         root.appendChild(template.content.cloneNode(true));
 
+        //get the div with class wam-host, wam-plugins and the select selectAudioInput
         this.mount = root.querySelector('.wam-host');
         this.mountPlug = root.querySelector('.wam-plugins');
         this.audioInput = root.querySelector('#selectAudioInput');
         this.firstAudioNode;
+        // get the toggleLiveInput button
         const liveInputButton = root.querySelector('#toggleLiveInput');
         liveInputButton.onclick = this.toggleLiveInput.bind(this, root);
 
@@ -53,6 +57,7 @@ class WamHost extends HTMLElement {
     
         this.audioContext = new AudioContext();
 
+        // Default constraints for live input
         this.defaultConstraints = {
             audio: {
                 echoCancellation: false,
@@ -65,6 +70,7 @@ class WamHost extends HTMLElement {
         this.setupMidiInput(root);
     }
 
+    // called when the element is added to the DOM
     async connectedCallback() {
         this.plugins = Array.from(this.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
         this.hostGroupId = await this.initWamHost();
@@ -81,6 +87,7 @@ class WamHost extends HTMLElement {
         });
     }
 
+    // setup the midi input device selector and handle midi messages
     setupMidiInput = (root) => {
         const midiInputSelector = root.querySelector('#selectMidiInput');
         if (navigator.requestMIDIAccess) {
@@ -129,6 +136,7 @@ class WamHost extends HTMLElement {
         this.liveInputActivated = !this.liveInputActivated;
     };
 
+    // convert the sound to mono
     convertToMono(input) {
         const splitter = this.audioContext.createChannelSplitter(2);
         const merger = this.audioContext.createChannelMerger(2);
@@ -141,6 +149,7 @@ class WamHost extends HTMLElement {
         return merger;
     }
     
+    // set the live input to the new stream
     setLiveInputToNewStream = (stream) => {
         window.stream = stream;
         const inputStreamNode = this.audioContext.createMediaStreamSource(stream);
@@ -155,6 +164,7 @@ class WamHost extends HTMLElement {
         console.log('Live Input node created...');
     };
 
+    // change the live input stream
     changeStream = (id) => {
         const constraints = {
             audio: {
@@ -170,6 +180,7 @@ class WamHost extends HTMLElement {
         });
     };
 
+    // build the audio device menu
     buildAudioDeviceMenu = () => {
         console.log('Building device menu...');
         navigator.mediaDevices
@@ -189,6 +200,7 @@ class WamHost extends HTMLElement {
         };
     };
     
+    // get the audio devices
     gotDevices = (deviceInfos) => {
         // lets rebuild the menu
         this.audioInput.innerHTML = '';
@@ -208,6 +220,7 @@ class WamHost extends HTMLElement {
         }
     };
 
+    // connect the live input to the first plugin
     connectLiveInput = async () => {
         const instance = await this.plugins[0].instance;
         const audioNode = instance.audioNode;
@@ -215,6 +228,7 @@ class WamHost extends HTMLElement {
         console.log('connected live input node to plugin node');
     };
 
+    // connect the plugins
     connectPlugins = async () => {
         for(let i = 0; i < this.plugins.length; i++) {
             const plugin = this.plugins[i];
@@ -226,18 +240,22 @@ class WamHost extends HTMLElement {
         }
     };
 
+    // connect the keyboard to the first plugin
     connectKeyboard = (audioNode,keyboardAudioNode) => {
         keyboardAudioNode.connect(audioNode);
         keyboardAudioNode.connectEvents(audioNode.instanceId);
     };
 
+    // mount the plugin to the dom
     mountPlugin = (domNode) => {
         this.mountPlug.innerHtml = '';
         this.mountPlug.appendChild(domNode);
     };
 
+    // load the host interface
     loadInterface = async () => {
 
+        // load the interface for instrument plugins
         const loadInstrumentInterface =  async (firstInstance) => {
 
             const loadKeyboard = () => {
@@ -263,6 +281,7 @@ class WamHost extends HTMLElement {
             this.mount.appendChild(keyboardUi);
         }
 
+        // load the interface for effect plugins
         const loadEffectInterface =  (firstInstance) => {
             const audio = document.createElement('audio');
             audio.id = 'player';
@@ -283,7 +302,9 @@ class WamHost extends HTMLElement {
             this.mediaElementSource.connect(firstInstance.audioNode);
         }
 
+        // get the first plugin instance
         const firstInstance = await this.plugins[0].instance;
+        // check if the plugin is an instrument or an effect and load the corresponding interface
         if(firstInstance.descriptor.isInstrument) {
             loadInstrumentInterface(firstInstance);
         }
@@ -292,13 +313,14 @@ class WamHost extends HTMLElement {
         }
     }
 
+    // initialize the host
     initWamHost =  async () => {
         const { default: initializeWamHost } = await import("./lib/sdk/src/initializeWamHost.js");
         const [hostGroupId] = await initializeWamHost(this.audioContext);
         return hostGroupId;
     }
 
-
+    // load the plugins
     loadPlugins =  async () => {
         //do async stuff 
         const promises = this.plugins.map(async plugin => {
@@ -310,12 +332,13 @@ class WamHost extends HTMLElement {
         console.log(this.plugins[0].instance.audioNode);
     }
 
+    // mount the plugins to the dom
     mountPlugins = async () => {
         const promises = this.plugins.map(async plugin => {
             const domNode = await plugin.instance.createGui();
             this.mountPlugin(domNode);
         });
-        await Promise.all(promises);
+        await Promise.all(promises); // wait for all plugins to be mounted
     }
 }
 
