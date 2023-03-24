@@ -15,3 +15,6 @@ To use the WAM Host Web Component, add a <wam-host> tag in your HTML file and ad
     <wam-plugin src="path/to/plugin2.js"></wam-plugin>
 </wam-host>
 ```
+
+Make sure the JavaScript files of the plugins are accessible from the specified paths and wam-plugin.js is imported in your HTML file.  
+See [WAM Plugin Web Component]() for more information on how to use the WAM Plugin Web Component.
