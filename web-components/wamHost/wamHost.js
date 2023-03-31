@@ -33,6 +33,10 @@ template.innerHTML = `
     </style>
 `;
 
+const getBaseURL = () => {
+	return new URL('.', import.meta.url);
+};
+
 // A web component to load a host for wamPlugins web components
 class WamHost extends HTMLElement {
     constructor() {
@@ -281,6 +285,7 @@ class WamHost extends HTMLElement {
             this.mount.appendChild(keyboardUi);
         }
 
+        /*
         // load the interface for effect plugins
         const loadEffectInterface =  (firstInstance) => {
             const audio = document.createElement('audio');
@@ -301,6 +306,54 @@ class WamHost extends HTMLElement {
             this.mediaElementSource = this.audioContext.createMediaElementSource(audio);
             this.mediaElementSource.connect(firstInstance.audioNode);
         }
+        */
+        const loadEffectInterface = async (firstInstance) => {
+            const audio = document.createElement('audio');
+            audio.id = 'player';
+            audio.controls = true;
+            audio.loop = true;
+            audio.crossOrigin = 'anonymous';
+            audio.onplay = () => {
+                this.audioContext.resume();
+            };
+        
+            // Create the select list
+            const soundSelect = document.createElement('select');
+            soundSelect.id = 'soundSelect';
+            soundSelect.addEventListener('change', (event) => {
+                const soundUrl = event.target.value;
+                audio.src = soundUrl;
+                console.log(`Sound changed to ${soundUrl}`);
+            });
+        
+            // Fetch the sound list and populate the select list
+            const loadSoundList = async () => {
+                const baseUrl = getBaseURL();
+                const response = await fetch(baseUrl + '/assets/sounds/audio_files.json');
+                const soundList = await response.json();
+        
+                soundList.forEach((sound) => {
+                    const option = document.createElement('option');
+                    console.log(baseUrl);
+                    option.value = baseUrl + `/assets/sounds/${sound.path}`;
+                    console.log(option.value);
+                    option.text = sound.name;
+                    soundSelect.appendChild(option);
+                });
+        
+                // Set the initial audio source
+                if (soundList.length > 0) {
+                    audio.src = baseUrl + `/assets/sounds/${soundList[0].path}`;
+                }
+            };
+        
+            await loadSoundList();
+        
+            this.mount.prepend(audio);
+            this.mount.prepend(soundSelect); // Add the select list to the DOM
+            this.mediaElementSource = this.audioContext.createMediaElementSource(audio);
+            this.mediaElementSource.connect(firstInstance.audioNode);
+        };
 
         // get the first plugin instance
         const firstInstance = await this.plugins[0].instance;
@@ -311,6 +364,7 @@ class WamHost extends HTMLElement {
         else {
             loadEffectInterface(firstInstance);
         }
+        
     }
 
     // initialize the host
