@@ -285,28 +285,6 @@ class WamHost extends HTMLElement {
             this.mount.appendChild(keyboardUi);
         }
 
-        /*
-        // load the interface for effect plugins
-        const loadEffectInterface =  (firstInstance) => {
-            const audio = document.createElement('audio');
-            audio.id = 'player';
-            //audio.src = "https://mainline.i3s.unice.fr/PedalEditor/Back-End/functional-pedals/published/StonePhaserSib/CleanGuitarRiff.mp3";
-            audio.src = "https://cdn.freesound.org/previews/234/234354_3908940-lq.mp3";
-
-            
-            audio.controls = true;
-            audio.loop = true;
-            audio.crossOrigin = 'anonymous';
-            // Il faut une interaction pour que l'audioContext soit activé
-            audio.onplay =  () => {
-                this.audioContext.resume();
-            };
-
-            this.mount.prepend(audio);
-            this.mediaElementSource = this.audioContext.createMediaElementSource(audio);
-            this.mediaElementSource.connect(firstInstance.audioNode);
-        }
-        */
         const loadEffectInterface = async (firstInstance) => {
             const audio = document.createElement('audio');
             audio.id = 'player';
@@ -319,6 +297,9 @@ class WamHost extends HTMLElement {
         
             // Create the select list
             const soundSelect = document.createElement('select');
+            soundSelect.style.width = '300px';
+
+
             soundSelect.id = 'soundSelect';
             soundSelect.addEventListener('change', (event) => {
                 const soundUrl = event.target.value;
@@ -338,6 +319,7 @@ class WamHost extends HTMLElement {
                     option.value = baseUrl + `/assets/sounds/${sound.path}`;
                     console.log(option.value);
                     option.text = sound.name;
+                    
                     soundSelect.appendChild(option);
                 });
         
@@ -349,8 +331,8 @@ class WamHost extends HTMLElement {
         
             await loadSoundList();
         
-            this.mount.prepend(audio);
             this.mount.prepend(soundSelect); // Add the select list to the DOM
+            this.mount.prepend(audio);
             this.mediaElementSource = this.audioContext.createMediaElementSource(audio);
             this.mediaElementSource.connect(firstInstance.audioNode);
         };
