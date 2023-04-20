@@ -310,13 +310,13 @@ class WamHost extends HTMLElement {
             // Fetch the sound list and populate the select list
             const loadSoundList = async () => {
                 const baseUrl = getBaseURL();
-                const response = await fetch(baseUrl + '/assets/sounds/audio_files.json');
+                const response = await fetch(baseUrl + 'assets/sounds/audio_files.json');
                 const soundList = await response.json();
         
                 soundList.forEach((sound) => {
                     const option = document.createElement('option');
                     console.log(baseUrl);
-                    option.value = baseUrl + `/assets/sounds/${sound.path}`;
+                    option.value = baseUrl + `assets/sounds/${sound.path}`;
                     console.log(option.value);
                     option.text = sound.name;
                     
