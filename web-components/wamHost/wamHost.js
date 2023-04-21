@@ -325,7 +325,7 @@ class WamHost extends HTMLElement {
         
                 // Set the initial audio source
                 if (soundList.length > 0) {
-                    audio.src = baseUrl + `/assets/sounds/${soundList[0].path}`;
+                    audio.src = baseUrl + `assets/sounds/${soundList[0].path}`;
                 }
             };
         
