@@ -371,8 +371,7 @@ class WamHost extends HTMLElement {
     // mount the plugins to the dom
     mountPlugins = async () => {
         const promises = this.plugins.map(async plugin => {
-            const domNode = await plugin.instance.createGui();
-            this.mountPlugin(domNode);
+            this.mountPlugin(plugin.domNode);
         });
         await Promise.all(promises); // wait for all plugins to be mounted
     }
