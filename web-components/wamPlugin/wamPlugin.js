@@ -39,7 +39,7 @@ class WamPlugin extends HTMLElement {
         // We load the plugin in a demo mode
         // Else we load the plugin in a host mode (ie. the plugin is a child of a wam-host)
         // check wam-host.js for more details
-        if(this.parentNode.nodeName !== 'WAM-HOST') {
+        if(this.parentNode.nodeName !== 'WAM-HOST' && this.parentNode.nodeName !== 'WAM-HOST-TEST') {
             this.audioContext = new AudioContext(); // Create an audio context for the demo
             this.loadPluginDemo();
         }
